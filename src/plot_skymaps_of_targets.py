@@ -151,6 +151,10 @@ def plot_mwd(lon,dec,color_val,origin=0,size=3,title='Mollweide projection',
         ax.set_xlabel('ecl lon', fontsize='x-small')
         ax.set_ylabel('ecl lat', fontsize='x-small')
     ax.grid(color='lightgray', linestyle='--', linewidth=0.5, zorder=-1)
+
+    ax.text(0.99,0.01,'github.com/lgbouma/tessmaps',
+            fontsize='xx-small',transform=ax.transAxes,
+            ha='right',va='bottom')
     fig.tight_layout()
     #fig.savefig(savdir+savname, bbox_inches='tight')
     fig.savefig(savdir+savname.replace('pdf','png'),dpi=350,
@@ -265,9 +269,6 @@ def plot_rect(lon, lat, nsectors, size=1, title='title', savdir='../results/',
         # annotate them
         subsel = sel
         subsel &= df['d'] < 2000     # within 2kpc
-        #subsel &= df['N1sr2'] >= 20  # at least 20 stars
-        #FIXME
-        #xy: lon,lat
         transform = ccrs.PlateCarree()._as_mpl_transform(ax)
 
         arrowprops = dict(facecolor='gray', edgecolor='gray', arrowstyle='->',
@@ -323,7 +324,7 @@ def plot_rect(lon, lat, nsectors, size=1, title='title', savdir='../results/',
     ax.text(0.99,0.01,'ecliptic coords',
             fontsize='xx-small',transform=ax.transAxes,
             ha='right',va='bottom')
-    ax.text(0.01,0.01,'L. G. Bouma',
+    ax.text(0.01,0.01,'github.com/lgbouma/tessmaps',
             fontsize='xx-small',transform=ax.transAxes,
             ha='left',va='bottom')
 
@@ -387,7 +388,7 @@ if __name__ == '__main__':
     n_sector=0
 
     #sanity_check()
-    #plot_yarmulkes()
+    plot_yarmulkes()
 
     plot_rectmaps(n_sector)
 

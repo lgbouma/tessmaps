@@ -8,7 +8,10 @@ It tells you:
 * what is being observed right now
 * how many sectors it will be observed for
 
-It also makes some sick plots to understand what's in the fields.
+It also makes some sick plots to understand what's in the fields. Like this:
+
+![sick
+image](https://github.com/lgbouma/tessmaps/blob/master/results/tess_rectmap_sector0_clusters.png)
 
 The default lists it parses are:
 * Kharchenko+ 2013's cluster list.
@@ -19,9 +22,12 @@ The default lists it parses are:
 	* WDs
 
 TODO:
-* Mamajek 2016's pre-Gaia association census.
+* add Mamajek 2016's pre-Gaia association census.
 * best and brightest metal-poor stars(?)
-* close stars (distance less than _x_ parsecs)
+* maybe add close stars (distance less than _x_ parsecs)
+* make pip installable (or otherwise save the venv)
+* write install instructions
+* make environment friendly
 
 Install
 ----------
