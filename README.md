@@ -2,7 +2,7 @@ What is TESS looking at right now?
 ----------
 
 This program produces a list of the top _N_ objects (stars, clusters,
-galaxies) that TESS is looking at, from an arbitrary number of input catalogs.
+galaxies) that TESS is looking at, from arbitrary input catalogs.
 
 It tells you:
 * what is being observed right now

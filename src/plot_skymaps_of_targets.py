@@ -196,7 +196,13 @@ def plot_yarmulkes():
 
 def plot_rect(lon, lat, nsectors, size=1, title='title', savdir='../results/',
               savname='temp.pdf', seabornmap='Paired',
-              overplottype=None, sector_number=None):
+              overplotd=None, sector_number=None, plotknownpoints=False):
+    '''
+    overplotd (dict): for example,
+        {'name': 'clusters', 'annotateconditions': ['d < 1000', 'logt < 9']}
+        The condition format must be "(key) </>/== (value)" to match the
+        catalog being parsed.
+    '''
 
     import cartopy.crs as ccrs
 
@@ -205,15 +211,16 @@ def plot_rect(lon, lat, nsectors, size=1, title='title', savdir='../results/',
     proj = ccrs.SouthPolarStereo(central_longitude=center_long,
                                  true_scale_latitude=True)
     ax = fig.add_subplot(1, 1, 1, projection=proj)
+
+    # the map size is set by where the scatter points are. (but try anyway).
     minlat, maxlat = -90, -10
-    # minlat actually does nothing. the map size is set by where the scatter
-    # points are.
     ax.set_extent([-180, 180, minlat, maxlat], ccrs.PlateCarree())
 
-    ksize=30
-    klon = np.array([-15,15,-30,3,130])
-    klat = np.array([-50, -45, -15, -80,-80])
-    knsectors = np.array([5,2,3,4,12])
+    if plotknownpoints:
+        ksize=30
+        klon = np.array([-15,15,-30,3,130])
+        klat = np.array([-50, -45, -15, -80,-80])
+        knsectors = np.array([5,2,3,4,12])
 
     # make colormap
     import seaborn as sns
@@ -231,18 +238,20 @@ def plot_rect(lon, lat, nsectors, size=1, title='title', savdir='../results/',
     cmap = mpl.colors.ListedColormap(rgbs)
     norm = mpl.colors.BoundaryNorm(bounds, cmap.N)
 
-    ## sanity check: plot the known ones
-    #cax = ax.scatter(klon, klat, c=knsectors, s=ksize, lw=0, zorder=2,
-    #                 cmap=cmap, norm=norm, rasterized=True,
-    #                 transform=ccrs.PlateCarree())
+    if plotknownpoints:
+        # sanity check: plotting the known points. are they where u expect?
+        cax = ax.scatter(klon, klat, c=knsectors, s=ksize, lw=0, zorder=2,
+                         cmap=cmap, norm=norm, rasterized=True,
+                         transform=ccrs.PlateCarree())
 
-    # plot the stars
+    # plot the given stars that are passed (usually from TIC)
     lon[lon>180] -= 360
     cax = ax.scatter(lon, lat, c=nsectors, s=size, lw=0, zorder=2,
                      cmap=cmap, norm=norm, rasterized=True,
                      transform=ccrs.PlateCarree())
+    ticlon, ticlat = lon, lat
 
-    if overplottype=='clusters':
+    if overplotd['name']=='clusters':
         from get_targets import _get_kharchenko_2013
         df = _get_kharchenko_2013()
 
@@ -253,13 +262,7 @@ def plot_rect(lon, lat, nsectors, size=1, title='title', savdir='../results/',
         sel = df['total_sectors_obsd']>0
         sel &= df['sector_{:d}'.format(sector_number)]>0
 
-        print('\nin sector {:d} observing:\n'.format(sector_number))
-        print(df[subcols][sel].
-              sort_values(['total_sectors_obsd','logt'],ascending=[False,True]).
-              to_string(index=False,col_space=12))
-        print('\n')
-
-        # plot the points
+        # plot the positions of clusters.
         lon[lon>180] -= 360
         _ = ax.scatter(lon[sel], lat[sel], c='darkorange', s=10, lw=0, zorder=4,
                        rasterized=True, transform=ccrs.PlateCarree())
@@ -268,7 +271,17 @@ def plot_rect(lon, lat, nsectors, size=1, title='title', savdir='../results/',
 
         # annotate them
         subsel = sel
-        subsel &= df['d'] < 2000     # within 2kpc
+        conditions = overplotd['annotateconditions']
+        for condition in conditions:
+            cs = condition.split(' ')
+            if cs[1] == '<':
+                subsel &= df[cs[0]] < float(cs[2])
+            elif cs[1] == '>':
+                subsel &= df[cs[0]] > float(cs[2])
+            elif cs[1] == '==':
+                subsel &= df[cs[0]] == float(cs[2])
+            else:
+                raise NotImplementedError
         transform = ccrs.PlateCarree()._as_mpl_transform(ax)
 
         arrowprops = dict(facecolor='gray', edgecolor='gray', arrowstyle='->',
@@ -276,8 +289,16 @@ def plot_rect(lon, lat, nsectors, size=1, title='title', savdir='../results/',
         bbox = dict(facecolor='white',edgecolor='gray',
                     alpha=0.95,linewidth=0.5,pad=0.2)
 
-        text_elon = np.linspace(0,270,len(lat[subsel]))
+        middle_elon = np.mean(ticlon[np.abs(ticlat)<45])
+        diff = 45
+        elon_start= np.remainder(middle_elon + diff, 360)
+        elon_stop = np.remainder(middle_elon - diff, 360)
+        text_elon = np.linspace(elon_start,elon_stop,len(lat[subsel]))
         text_elat = -20*np.ones_like(text_elon)
+        if sector_number in [5,6,7,9,10,11]:
+            text_elon = np.remainder(
+                        np.linspace(elon_start,elon_stop+360,len(lat[subsel])),
+                        360)
 
         for ix, sname, alon, alat in list(
             zip(range(len(names[subsel])), names[subsel],
@@ -293,7 +314,7 @@ def plot_rect(lon, lat, nsectors, size=1, title='title', savdir='../results/',
         #            textcoords=transform, ha='center', va='top',
         #            arrowprops=arrowprops, bbox=bbox, fontsize='xx-small')
 
-    elif overplottype:
+    elif overplotd['name']:
         raise NotImplementedError
 
     # set up colorbar
@@ -354,14 +375,14 @@ def plot_rect(lon, lat, nsectors, size=1, title='title', savdir='../results/',
 
     fig.savefig(savdir+savname.replace('pdf','png'),dpi=400,
                 bbox_inches='tight')
+    print('made {:s}'.format(savdir+savname.replace('pdf','png')))
 
 
-def plot_rectmaps(n_sector, seabornmap='Paired', overplottype=None,
-                  sector_number=None, title_append=''):
-    # n_sector: e.g., 0, if it's starting July 25, 2018.
+def plot_rectmaps(n_sector, seabornmap='Paired', overplotd=None,
+                  title_append=''):
+    # n_sector: 0-12, for southern ecl. 0: July 25, 2018.
     # seabornmap: 'Paired' or 'Blues'
     # overplottype: None or Kharchenko
-    # sector_number: 0-12, for southern ecl
 
     df = pd.read_csv('../data/TIC71_prioritycut_tess_sectors.csv')
     ra, dec = np.array(df['RA']), np.array(df['DEC'])
@@ -370,8 +391,9 @@ def plot_rectmaps(n_sector, seabornmap='Paired', overplottype=None,
     this_sector = np.array(df['sector_{:d}'.format(n_sector)])
     sel = this_sector > 0
 
-    if overplottype:
-        savname ='tess_rectmap_sector{:d}_{:s}.pdf'.format(n_sector, overplottype)
+    if overplotd:
+        savname ='tess_rectmap_sector{:d}_{:s}.pdf'.format(
+            n_sector, overplotd['name'])
     else:
         savname ='tess_rectmap_sector{:d}.pdf'.format(n_sector)
 
@@ -380,7 +402,7 @@ def plot_rectmaps(n_sector, seabornmap='Paired', overplottype=None,
 
     plot_rect(elon[sel], elat[sel], totsectors[sel], size=0.25, title=title,
               savname=savname, seabornmap=seabornmap,
-              overplottype=overplottype, sector_number=sector_number)
+              overplotd=overplotd, sector_number=n_sector)
 
 
 if __name__ == '__main__':
@@ -388,10 +410,22 @@ if __name__ == '__main__':
     n_sector=0
 
     #sanity_check()
-    plot_yarmulkes()
 
-    plot_rectmaps(n_sector)
+    #plot_yarmulkes()
 
-    plot_rectmaps(
-        n_sector, seabornmap='Blues', overplottype='clusters', sector_number=0,
-        title_append='\ngray: Kharchenko+13 clusters. labelled if d<2kpc.')
+    #plot_rectmaps(n_sector)
+
+    # make cluster maps for year 1:
+    for n_sector in range(13):
+
+        if n_sector in [0,1,2,3,4,12]:
+            overplotd = {'name':'clusters',
+                         'annotateconditions':['d < 2000']}
+            titlea = '\ngray: Kharchenko+13 clusters. labelled if d<2kpc.'
+        else:
+            overplotd = {'name':'clusters',
+                         'annotateconditions':['d < 500', 'logt < 9']}
+            titlea = '\ngray: Kharchenko+13 clusters. labelled if d<500pc, age<1Gyr.'
+
+        plot_rectmaps(n_sector, seabornmap='Blues', overplotd=overplotd,
+                      title_append=titlea)

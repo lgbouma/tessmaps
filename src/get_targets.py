@@ -1,7 +1,20 @@
 # -*- coding: utf-8 -*-
+'''
+usage: get_targets.py [-h] [-sn SECTOR_NUMBER] [-k13] [-tic71]
+
+Generate lists of the best targets for desired catalog.
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -sn SECTOR_NUMBER, --sector_number SECTOR_NUMBER
+                        0-12 for first year.
+  -k13, --get_kharchenko_2013
+                        Kharchenko+ 2013 cluster list.
+  -tic71, --get_TIC71   TIC71 special catalog lists.
+'''
 from __future__ import division, print_function
 
-import os
+import os, argparse
 import numpy as np, pandas as pd
 
 from astropy import units as u
@@ -128,10 +141,23 @@ def get_targets(sector_number, get_kharchenko_2013=True, get_TIC71=True):
 
 if __name__ == '__main__':
 
-    sector_number = 0
-    get_kharchenko_2013 = True
-    get_TIC71 = False # TODO: implement
+    parser = argparse.ArgumentParser(
+        description='Generate lists of the best targets for desired catalog.')
 
-    get_targets(sector_number,
-                get_kharchenko_2013=get_kharchenko_2013,
-                get_TIC71=get_TIC71)
+    parser.add_argument('-sn', '--sector_number', type=int, default=None,
+        help='0-12 for first year.')
+
+    parser.add_argument('-k13', '--get_kharchenko_2013', action='store_true',
+        help='Kharchenko+ 2013 cluster list.', default=False)
+
+    parser.add_argument('-tic71', '--get_TIC71', action='store_true',
+        help='TIC71 special catalog lists.', default=False)
+
+    args = parser.parse_args()
+
+    if args.get_TIC71:
+        raise NotImplementedError
+
+    get_targets(args.sector_number,
+                get_kharchenko_2013=args.get_kharchenko_2013,
+                get_TIC71=args.get_TIC71)
