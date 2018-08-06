@@ -22,8 +22,9 @@ The default lists it parses are:
 	* WDs
 
 TODO:
+* add Gagne et al 2018's BANYAN association list.
 * add Mamajek 2016's pre-Gaia association census.
-* best and brightest metal-poor stars(?)
+* best and brightest metal-poor stars (Kevin Schlaufmann has worked on these)
 * maybe add close stars (distance less than _x_ parsecs)
 * make pip installable (or otherwise save the venv)
 * write install instructions
