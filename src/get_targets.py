@@ -173,9 +173,6 @@ def get_targets(sector_number, get_kharchenko_2013=True, get_TIC71=True,
                 np.array(df['SPEC_LIST']).astype(str),
                 TIC71_sublist)!=-1)
 
-        #FIXME: for known planets, you should cross-match against MAST to get
-        # better names.
-        #FIXME or are they already there?
         from plot_skymaps_of_targets import _get_knownplanet_names_transits
         names, is_transiting = _get_knownplanet_names_transits(df.iloc[sel])
 

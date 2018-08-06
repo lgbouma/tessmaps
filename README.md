@@ -8,20 +8,32 @@ It tells you:
 * what is being observed right now
 * how many sectors it will be observed for
 
-It also makes some sick plots to understand what's in the fields. Like this:
-
-![sick
-image](https://github.com/lgbouma/tessmaps/blob/master/results/tess_rectmap_sector0_clusters.png)
-
 The default lists it parses are:
 * Kharchenko+ 2013's cluster list.
 * CTL 7.1, from filtergraph, which includes:
+	* known planets
 	* cool dwarf stars
 	* hot subdwarfs
-	* known planets
 	* WDs
 
-TODO:
+The results can be output as text files:
+[`/results/knownplanet_sector0.txt`](https://github.com/lgbouma/tessmaps/blob/master/results/knownplanet_sector0.txt)
+
+They can also be output as plots to understand what's in the fields. For
+example, the clusters observed in the first science sector look like this:
+
+![clusters](https://github.com/lgbouma/tessmaps/blob/master/results/tess_rectmap_sector0_clusters.png)
+
+The known exoplanets in the first science sector look like this:
+
+![known](https://github.com/lgbouma/tessmaps/blob/master/results/tess_rectmap_sector0_knownplanet.png)
+
+You can also make all-sky maps, like this:
+
+![all-sky](https://github.com/lgbouma/tessmaps/blob/master/results/tess_pointings_radec_south_top250k.png)
+
+TODO
+----------
 * add Gagne et al 2018's BANYAN association list.
 * add Mamajek 2016's pre-Gaia association census.
 * best and brightest metal-poor stars (Kevin Schlaufmann has worked on these)
@@ -30,6 +42,8 @@ TODO:
 * write install instructions
 * make environment friendly
 
-Install
+LICENSE
 ----------
-
+See `LICENSE.txt`. Feel free to hack it into whatever you want. Useful pull
+requests are gratefully accepted. Don't expect the exposure-time calculator to
+be 100% accurate. Rely on official TESS-mission products for that.
