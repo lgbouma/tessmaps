@@ -67,6 +67,7 @@ A nasaexoplanetarchive query to crossmatch positions to planet names currently
 cd $SOME_DIRECTORY
 git clone https://github.com/astropy/astroquery
 cd astroquery
-python setup.py install
+source activate tmaps
+(tmaps) python setup.py install
 ```
 Then you should be set.
