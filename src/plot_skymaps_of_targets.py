@@ -328,7 +328,7 @@ def plot_rect(lon, lat, nsectors, size=1, title='title', savdir='../results/',
                      transform=ccrs.PlateCarree())
     ticlon, ticlat = lon, lat
 
-    if overplotd['name']:
+    if type(overplotd)==dict:
 
         if overplotd['name']=='clusters':
             from get_targets import _get_kharchenko_2013
@@ -345,7 +345,8 @@ def plot_rect(lon, lat, nsectors, size=1, title='title', savdir='../results/',
 
             lon, lat = np.array(df['ECLONG'])[sel], np.array(df['ECLAT'])[sel]
 
-            names, is_transiting = _get_knownplanet_names_transits(df[sel])
+            #FIXME
+            names, is_transiting = _get_knownplanet_names_transits(df.iloc[sel])
 
 
         else:
@@ -409,6 +410,8 @@ def plot_rect(lon, lat, nsectors, size=1, title='title', savdir='../results/',
                         textcoords=transform, ha='center', va='top',
                         arrowprops=arrowprops, bbox=bbox, fontsize='xx-small',
                         zorder=4)
+    else:
+        pass
 
     # set up colorbar
     cbar = fig.colorbar(cax, cmap=cmap, norm=norm, boundaries=cbarbounds,
@@ -540,7 +543,7 @@ if __name__ == '__main__':
     if args.all_sky:
         plot_yarmulkes()
     if args.rectmap_plain:
-        assert args.sector_number
+        assert type(args.sector_number)==int
         plot_rectmaps(args.sector_number)
     if args.kharchenko_2013:
         assert not type(args.sector_number)==int
