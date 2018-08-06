@@ -20,7 +20,8 @@ import numpy as np, pandas as pd
 from astropy import units as u
 from astropy.coordinates import SkyCoord
 
-from get_data import load_kharchenko_2013, make_prioritycut_ctl
+from get_data import load_kharchenko_2013, make_prioritycut_ctl, \
+        make_sublist_ctl
 from get_time_on_silicon import get_time_on_silicon
 
 def _get_kharchenko_2013():
@@ -47,7 +48,7 @@ def _get_kharchenko_2013():
     return df
 
 
-def _get_TIC71(ctldir='/home/luke/local/TIC/CTL71/'):
+def _get_TIC71_prioritycut(ctldir='/users/luke/local/TIC/CTL71/'):
 
     pcpath = '../data/TIC71_prioritycut.csv'
     pctspath = '../data/TIC71_prioritycut_tess_sectors.csv'
@@ -74,19 +75,48 @@ def _get_TIC71(ctldir='/home/luke/local/TIC/CTL71/'):
     return df
 
 
-def get_targets(sector_number, get_kharchenko_2013=True, get_TIC71=True):
+def _get_TIC71_sublist(ctldir='/Users/luke/local/TIC/CTL71/',
+                       sublist=None):
+    '''
+    sublist: str in ["knownplanet" , ... ]
+    '''
+
+    slpath = '../data/TIC71_{:s}cut.csv'.format(sublist)
+    sltspath = '../data/TIC71_{:s}cut_tess_sectors.csv'.format(sublist)
+
+    if not os.path.exists(slpath):
+        make_sublist_ctl(datadir=ctldir, sublist=sublist)
+    sldf = pd.read_csv(slpath)
+
+    if not os.path.exists(sltspath):
+        ra = np.array(sldf['RA'])
+        dec = np.array(sldf['DEC'])
+        coords = SkyCoord(ra=ra*u.degree, dec=dec*u.degree, frame='icrs')
+
+        _ = get_time_on_silicon(coords)
+        df = sldf.join(_, how='left')
+        df.to_csv(sltspath, index=False)
+
+    else:
+        df = pd.read_csv(sltspath)
+
+    return df
+
+def get_targets(sector_number, get_kharchenko_2013=True, get_TIC71=True,
+               TIC71_sublist=None):
     '''
     For a given TESS sector, what are some good objects (stars, clusters,
     galaxies) to be aware of?
 
-    The default lists it parses are:
+    The implemented lists to parse include:
     * Kharchenko+ 2013's cluster list.
-    * CTL 7.1, from filtergraph, which includes:
-        cool dwarf stars. bright stars. hot subdwarfs. known planets.
-        "knownplanet;bright" (might want to read the docs).
+    * CTL 7.1, from filtergraph, with sublists:
+        ['bright', 'cooldwarf', 'cooldwarf;bright', 'hotsubdwarf',
+         'knownplanet', 'knownplanet;bright']
 
     Some other ideas:
     * Mamajek 2016's pre-Gaia association census.
+    * Gagne et al 2018's BANYAN association list.
     * WDs
     * best and brightest metal-poor stars(?)
     * close stars (distance less than _x_ parsecs)
@@ -104,39 +134,92 @@ def get_targets(sector_number, get_kharchenko_2013=True, get_TIC71=True):
 
     if get_kharchenko_2013:
         df = _get_kharchenko_2013()
-        print('\n'+'*'*50)
-
-        print('All Kharchenko+ 2013 clusters in sector {:d}:\n'.format(
-              sector_number))
 
         subcols = ['Name','d','logt','N1sr2','total_sectors_obsd']
 
+        print('\n'+'*'*50)
+        print('All Kharchenko+ 2013 clusters in sector {:d}:\n'.format(
+              sector_number))
+
         sel = df['total_sectors_obsd']>0
         sel &= df['sector_{:d}'.format(sector_number)]>0
-
         print(df[subcols][sel].
-              sort_values(['total_sectors_obsd','logt'],ascending=[False,True]).
+              sort_values(['total_sectors_obsd','logt'],
+                          ascending=[False,True]).
               to_string(index=False,col_space=12))
 
         print('\n100 most-observed Kharchenko+ 2013 clusters in South:\n')
 
         sel = df['total_sectors_obsd']>0
         print(df[subcols][sel].
-              sort_values(['total_sectors_obsd','logt'],ascending=[False,True]).
+              sort_values(['total_sectors_obsd','logt'],
+                          ascending=[False,True]).
               head(100).
               to_string(index=False,col_space=12))
 
         print('\n'+'*'*50)
 
     if get_TIC71:
-        df = _get_TIC71()
 
-        speclists = np.unique(df[~df['SPEC_LIST'].isnull()]['SPEC_LIST'])
+        oksublists = ['bright', 'cooldwarf', 'cooldwarf;bright', 'hotsubdwarf',
+                      'knownplanet', 'knownplanet;bright']
+        if TIC71_sublist not in oksublists:
+            raise AssertionError
 
-        for speclist in speclists:
-            print('\n'+'*'*50)
-            #FIXME here. 
-            print
+        df = _get_TIC71_sublist(sublist=TIC71_sublist)
+
+        # np array version of e.g., ("knownplanet" in arrayname)
+        sel = np.flatnonzero(np.core.defchararray.find(
+                np.array(df['SPEC_LIST']).astype(str),
+                TIC71_sublist)!=-1)
+
+        #FIXME: for known planets, you should cross-match against MAST to get
+        # better names.
+        #FIXME or are they already there?
+        from plot_skymaps_of_targets import _get_knownplanet_names_transits
+        names, is_transiting = _get_knownplanet_names_transits(df.iloc[sel])
+
+        dfsel = df.iloc[sel]
+        del sel
+        if TIC71_sublist == 'knownplanet':
+            dfsel['pl_hostname'] = names
+            dfsel['is_transiting'] = is_transiting
+            subcols = ['pl_hostname','is_transiting','PRIORITY',
+                       'TESSMAG','RADIUS','total_sectors_obsd']
+        else:
+            dfsel = -1
+            raise NotImplementedError
+
+        print('\n'+'*'*50)
+        print('All {:s} from TIC7.1 in sector {:d}:\n'.format(TIC71_sublist,
+              sector_number))
+
+        sel = dfsel['total_sectors_obsd']>0
+        sel &= dfsel['sector_{:d}'.format(sector_number)]>0
+        if TIC71_sublist == 'knownplanet':
+            print(dfsel[subcols][sel].
+                  sort_values(['is_transiting','PRIORITY','TESSMAG','RADIUS'],
+                              ascending=[False,False,True,True]).
+                  to_string(index=False,col_space=10))
+        else:
+            raise NotImplementedError
+
+        print('\n500 most-observed {:s} from TIC7.1 in South:\n'.format(
+              TIC71_sublist))
+
+        sel = dfsel['total_sectors_obsd']>0
+        if TIC71_sublist=='knownplanet':
+            print(dfsel[subcols][sel].
+                  sort_values(['is_transiting','total_sectors_obsd',
+                               'PRIORITY','TESSMAG','RADIUS'],
+                              ascending=[False,False,False,True,True]).
+                  head(500).
+                  to_string(index=False,col_space=12))
+        else:
+            raise NotImplementedError
+
+        print('\n'+'*'*50)
+
 
 
 if __name__ == '__main__':
@@ -151,13 +234,16 @@ if __name__ == '__main__':
         help='Kharchenko+ 2013 cluster list.', default=False)
 
     parser.add_argument('-tic71', '--get_TIC71', action='store_true',
-        help='TIC71 special catalog lists.', default=False)
+        help='Boolean to parse TIC71 special catalogs.', default=False)
+
+    helpstr = "('bright'|'cooldwarf'|'cooldwarf;bright'|'hotsubdwarf'|"+\
+              "'knownplanet'|'knownplanet;bright')"
+    parser.add_argument('-ts', '--TIC71_sublist', type=str,
+                        default=None, help=helpstr)
 
     args = parser.parse_args()
 
-    if args.get_TIC71:
-        raise NotImplementedError
-
     get_targets(args.sector_number,
                 get_kharchenko_2013=args.get_kharchenko_2013,
-                get_TIC71=args.get_TIC71)
+                get_TIC71=args.get_TIC71,
+                TIC71_sublist=args.TIC71_sublist)

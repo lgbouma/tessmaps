@@ -79,8 +79,6 @@ def get_time_on_silicon(coords, lambda_init=315.8*u.degree, fov=24.*u.degree,
     ccd_center = np.ones(2)*(ccd_pix + gap_pix) / 2
     delt = (np.ones(2)*u.pix).to(u.degree, pixel_scale)
 
-    #FIXME CHOOSE BETWEEN ELON/ELAT. TEST BOTH. WHICH WORKS BETTER? WHICH CAN
-    #BE TRUSTED?
     elon = coords.barycentrictrueecliptic.lon.value
     elat = coords.barycentrictrueecliptic.lat.value
     ra = coords.ra.value
@@ -96,13 +94,13 @@ def get_time_on_silicon(coords, lambda_init=315.8*u.degree, fov=24.*u.degree,
         w = wcs.WCS(naxis=2)
         w.wcs.crpix = ccd_center.value
         w.wcs.crval = [view['elon'].value, view['elat'].value]
-        ###w.wcs.crval = [view['ra'].value, view['dec'].value]
+        ###w.wcs.crval = [view['ra'].value, view['dec'].value] # either works?
         w.wcs.cdelt = delt.value
         w.wcs.ctype = ['RA---TAN', 'DEC--TAN']
 
         # follow fits standards: The image pixel count starts with 1.
         x, y = w.wcs_world2pix(elon, elat, 1)
-        ###x, y = w.wcs_world2pix(ra, dec, 1)
+        ###x, y = w.wcs_world2pix(ra, dec, 1) # either works?
 
         try:
             # the extra "1" is because of 1-based image count.

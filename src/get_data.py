@@ -10,7 +10,7 @@ from astropy import units as u
 from glob import glob
 import os
 
-def make_prioritycut_ctl(datadir='/home/luke/local/TIC/CTL71/', prioritycut=0.0015):
+def make_prioritycut_ctl(datadir='/Users/luke/local/TIC/CTL71/', prioritycut=0.0015):
     '''
 
     I downloaded the 2018/07/07 CTL direct from
@@ -67,6 +67,7 @@ def make_prioritycut_ctl(datadir='/home/luke/local/TIC/CTL71/', prioritycut=0.00
 
     subcats = np.sort(glob(datadir+'??-??.csv'))
 
+    print('making priority cut catalog...')
     for ix, subcat in enumerate(subcats):
         print(ix)
         if os.path.exists(datadir+'temp_{:d}.csv'.format(ix)):
@@ -90,6 +91,57 @@ def make_prioritycut_ctl(datadir='/home/luke/local/TIC/CTL71/', prioritycut=0.00
 
     df.to_csv('../data/TIC71_prioritycut.csv', index=False)
     print('saved ../data/TIC71_prioritycut.csv')
+
+
+def make_sublist_ctl(datadir='/Users/luke/local/TIC/CTL71/',
+                     sublist=None):
+    '''
+    sublist: str in ["knownplanet" , ... ]
+
+    see make_prioritycut_ctl for verbose docstring
+    '''
+
+    with open(datadir+'header.txt') as f:
+        hdr = f.readlines()[0]
+    columns = hdr.split(',')
+
+    subcols = ['RA', 'DEC', 'TESSMAG', 'TEFF', 'PRIORITY', 'RADIUS', 'MASS',
+               'CONTRATIO', 'ECLONG', 'ECLAT', 'DIST', 'TICID', 'SPEC_LIST']
+
+    subcats = np.sort(glob(datadir+'??-??.csv'))
+
+    print('making {:s}-cut catalog'.format(sublist))
+    for ix, subcat in enumerate(subcats):
+        print(ix)
+        if os.path.exists(datadir+'temp_{:d}.csv'.format(ix)):
+            continue
+        sc = pd.read_csv(subcat, names=columns)
+        sc = sc[subcols]
+        if sublist=='knownplanet':
+            # np array version of e.g., ("knownplanet" in arrayname)
+            sel = np.flatnonzero(np.core.defchararray.find(
+                    np.array(df['SPEC_LIST']).astype(str), sublist)!=-1)
+        else:
+            sc = sc[sc['SPEC_LIST']==sublist]
+
+        sc.to_csv(datadir+'temp_{:d}.csv'.format(ix), index=False)
+
+    temps = np.sort(glob(datadir+'temp_*.csv'))
+
+    for ix, temp in enumerate(temps):
+        if ix == 0:
+            df = pd.read_csv(temp)
+        else:
+            new = pd.read_csv(temp)
+            df = pd.concat([df, new])
+            print('length of {:s}-cut TIC list is {:d}'.format(
+                sublist, len(df)))
+
+        os.remove(temp)
+
+    outname = '../data/TIC71_{:s}cut.csv'.format(sublist)
+    df.to_csv(outname, index=False)
+    print('saved {:s}'.format(outname))
 
 
 def load_kharchenko_2013():
