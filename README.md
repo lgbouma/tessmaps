@@ -1,17 +1,17 @@
 What is TESS looking at right now?
 ----------
 
-This program produces a list of the top _N_ objects (stars, clusters,
-galaxies) that TESS is looking at, from arbitrary input catalogs.
+This program produces a list of the top _N_ objects (stars, clusters, galaxies)
+that TESS is looking at, from arbitrary input catalogs.
 
-It tells you:
-* what is being observed right now
-* how many sectors it will be observed for
+It tells you what is being observed right now, and how many sectors it will be
+observed for.
 
 The default lists it parses are:
 * Kharchenko+ 2013's cluster list.
 * CTL 7.1, from filtergraph, which includes:
-	* known planets
+	* known planets (as parsed from the SPEC\_LIST keyword. This is not perfect,
+      for reasons that are being debugged.)
 	* cool dwarf stars
 	* hot subdwarfs
 	* WDs
@@ -47,3 +47,26 @@ LICENSE
 See `LICENSE.txt`. Feel free to hack it into whatever you want. Useful pull
 requests are gratefully accepted. Don't expect the exposure-time calculator to
 be 100% accurate. Rely on official TESS-mission products for that.
+
+INSTALL
+----------
+Current easiest install is from source, using anaconda. I'll add a `setup.py`
+shortly. 
+
+First,
+```
+cd $SOME_DIRECTORY
+git clone https://github.com/lgbouma/tessmaps
+cd tessmaps
+conda env create -f environment.yml -n tmaps
+```
+
+A nasaexoplanetarchive query to crossmatch positions to planet names currently
+(2018/08/06) depends on a bleeding-edge `astroquery` build. To make that:
+```
+cd $SOME_DIRECTORY
+git clone https://github.com/astropy/astroquery
+cd astroquery
+python setup.py install
+```
+Then you should be set.
