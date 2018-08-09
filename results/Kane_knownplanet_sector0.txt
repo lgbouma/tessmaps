@@ -61,6 +61,8 @@ pl_hostname  is_transiting       Tmag  total_sectors_obsd
   WASP-94 B              0      9.991                   1
 WD 0806-661              0     13.707                   8
 
+ saved ../results/kane_knownplanets_sector0.csv
+
 500 most-observed knownplanet from Stephen Kane's list in South:
 
 pl_hostname  is_transiting       Tmag  total_sectors_obsd
