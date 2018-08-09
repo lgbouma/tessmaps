@@ -5,8 +5,14 @@
 
 sublist="knownplanet"
 
-sn=0
-python get_targets.py -sn $sn --get_TIC71 --get_kane_knownplanets -ts $sublist > ../results/Kane_"$sublist"_sector$sn.txt
-#for sn in {0..12}; do
-#  python get_targets.py -sn $sn --get_TIC71 --get_kane_knownplanets -ts $sublist > ../results/Kane_"$sublist"_sector$sn.txt
-#done
+# sn=0
+# python get_targets.py -sn $sn --get_TIC71 --get_kane_knownplanets \
+#             -ts $sublist > ../results/Kane_"$sublist"_sector$sn.txt
+
+for sn in {0..12}; do
+  echo $sn ;
+  python get_targets.py -sn $sn \
+                        --get_TIC71 \
+                        --get_kane_knownplanets \
+                        -ts $sublist > ../results/Kane_"$sublist"_sector$sn.txt
+done

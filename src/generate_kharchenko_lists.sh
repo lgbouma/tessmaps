@@ -5,5 +5,8 @@
 # the south.
 
 for sn in {0..12}; do
-	python get_targets.py --sector_number $sn --get_kharchenko_2013 > ../results/kharchenko_sector$sn.txt
+  echo $sn
+	python get_targets.py --sector_number $sn \
+                        --get_kharchenko_2013 \
+                        > ../results/kharchenko_sector$sn.txt
 done

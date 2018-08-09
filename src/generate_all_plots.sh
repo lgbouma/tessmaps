@@ -4,6 +4,8 @@
 # PURPOSE
 # Generate all the possible plots. Comment at-will if you want some plots,
 # rather than others.
+# USAGE
+# execute from shell, in `TESSMAPDIR/src/'
 ##########
 
 python plot_skymaps_of_targets.py --sanity_check
@@ -17,4 +19,3 @@ done
 python plot_skymaps_of_targets.py --known_planets
  
 python plot_skymaps_of_targets.py --kharchenko_2013
-
