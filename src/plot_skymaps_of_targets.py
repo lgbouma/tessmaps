@@ -11,8 +11,8 @@ optional arguments:
   -sn SECTOR_NUMBER, --sector_number SECTOR_NUMBER
                         0-12 for first year.
   -k13, --kharchenko_2013
-                        Overplot Kharchenko+ 2013 clusters on TIC7.1 rect map.
-  -kp, --known_planets  Overplot Kharchenko+ 2013 clusters on TIC7.1 rect map.
+                        Overplot Kharchenko+ 2013 clusters on TESS footprint.
+  -kp, --known_planets  Overplot known planets on TESS footprint.
   -rm, --rectmap_plain  Plot rect map for a given sector number, showing
                         TIC7.1 stars.
   -as, --all_sky        Plot all-sky yarmulkes.
@@ -25,28 +25,34 @@ mpl.use('Agg')
 import matplotlib.pyplot as plt
 import pandas as pd, numpy as np
 
+import tessmaps as tm
+
 from astropy import units as u
 from astropy.coordinates import SkyCoord
 
 ##########
 # helper functions
 ##########
-def _get_knownplanet_names_transits(df):
+def _get_knownplanet_names_transits(df, is_kane_list=False):
     '''
-    assign names to known planets (TIC7.1 doesn't have them). do it
-    by crossmatching to NASA exoplanet archive, and taking the
-    closest star as the true name. The astroquery call below, which
-    is needed to know whether they transit, requires bleeding-edge
-    astroquery dev branch.
+    get names and "is_transiting" for known planets by by crossmatching
+    coordinates to NASA exoplanet archive
+
+    The astroquery call below, which is needed to know whether they transit,
+    requires bleeding-edge astroquery dev branch.
 
     args:
-        df: a dataframe of TIC71 rows and columns
+        df: a dataframe with RAs and decs for which you want the corresponding
+        names and "is_transiting" exoarchive column.
     '''
     from astroquery.nasa_exoplanet_archive import NasaExoplanetArchive
     ea = NasaExoplanetArchive.get_confirmed_planets_table(
             all_columns=True)
 
-    ticra, ticdec = np.array(df['RA']), np.array(df['DEC'])
+    if not is_kane_list:
+        ticra, ticdec = np.array(df['RA']), np.array(df['DEC'])
+    else:
+        ticra, ticdec = np.array(df['ra']), np.array(df['dec'])
     neara, neadec = np.array(ea['ra']), np.array(ea['dec'])
 
     c_tic = SkyCoord(ra=ticra*u.deg, dec=ticdec*u.deg, frame='icrs')
@@ -59,29 +65,70 @@ def _get_knownplanet_names_transits(df):
     return names, is_transiting
 
 
+def _rectmap_plain(sector_number):
+
+    elons, elats = np.array([0,0])*u.deg, np.array([-90,-90])*u.deg
+    coords = SkyCoord(lon=elons, lat=elats, frame='barycentrictrueecliptic')
+    coords = coords.icrs
+    savname ='tess_rectmap_sector{:d}.pdf'.format(sector_number)
+    title = 'CTL7.1 top 250k, sector {:d}.'.format(sector_number) +\
+            ' tess.mit.edu/science/tess-pointing'
+    tm.make_rect_map(sector_number, coords, bkgnd_cmap='Paired',
+                     savname=savname, title=title, ms=0)
+
+
 def _kharchenko_2013_rectmap(sector_number):
 
+    from get_targets import _get_kharchenko_2013
+    df = _get_kharchenko_2013()
+    ras, decs = np.array(df['ra'])*u.deg, np.array(df['dec'])*u.deg
+    coords = SkyCoord(ra=ras, dec=decs, frame='icrs')
+    names = np.array(df['Name'])
+
     if sector_number in [0,1,2,3,4,12]:
-        overplotd = {'name':'clusters',
-                     'annotateconditions':['d < 2000']}
-        titlea = '\ngray: Kharchenko+13 clusters. label if d<2kpc.'
+        title = 'Sector {:d}. '.format(sector_number)+\
+                 'Gray: Kharchenko+13 clusters. label if d<2kpc.'
+        sel = np.array(df['d']) < 2000
     else:
-        overplotd = {'name':'clusters',
-                     'annotateconditions':['d < 500', 'logt < 9']}
-        titlea = '\ngray: Kharchenko+13 clusters. label if d<500pc, age<1Gyr.'
+        title = 'Sector {:d}. '.format(sector_number)+\
+                 'Gray: Kharchenko+13 clusters. label if d<500pc, age<1Gyr.'
+        sel = np.array(df['d']) < 500
+        sel &= np.array(df['logt']) < 9
 
-    plot_rectmaps(sector_number, seabornmap='Blues',
-                  overplotd=overplotd, title_append=titlea)
+    savname = 'tess_rectmap_kharchenko13_sector{:d}.png'.format(sector_number)
+
+    tm.make_rect_map(sector_number, coords, names=names, annotate_bools=sel,
+                     title=title, bkgnd_cmap='Blues', savname=savname)
 
 
-def _known_planets_rectmap(sector_number):
+def _known_planets_rectmap(sector_number, using_Kane_list=True):
+    '''
+    at the time of writing, Stephen Kane had what was probably the best list of
+    known exoplanets. Cite him if you use it!
+    '''
 
-    overplotd = {'name':'knownplanet',
-                 'annotateconditions':['']}
-    titlea = '\ngray: Known planets. '+\
-             'Orange if observed, green if also transits.'.format(sector_number)
-    plot_rectmaps(sector_number, seabornmap='Blues', overplotd=overplotd,
-                  title_append=titlea)
+    if not using_Kane_list:
+        raise NotImplementedError
+
+    title = 'Sector {:d}. Gray: Kane\'s known planets. '.format(sector_number)+\
+            'Orange: observed, green: transits.'
+
+    savname = 'tess_rectmap_knownplanets_sector{:d}.png'.format(sector_number)
+
+    from get_targets import _get_kane_knownplanets
+    df = _get_kane_knownplanets()
+    ras, decs = np.array(df['ra'])*u.deg, np.array(df['dec'])*u.deg
+    coords = SkyCoord(ra=ras, dec=decs, frame='icrs')
+
+    if using_Kane_list:
+        from plot_skymaps_of_targets import _get_knownplanet_names_transits
+        names, is_transiting = _get_knownplanet_names_transits(
+            df, is_kane_list=True)
+
+    tm.make_rect_map(sector_number, coords, names=names,
+                     annotate_bools=is_transiting, title=title,
+                     bkgnd_cmap='Blues', savname=savname)
+
 
 ##########
 # plotting functions
@@ -246,7 +293,7 @@ def sanity_check():
              is_radec=True)
 
 
-def plot_yarmulkes():
+def plot_allsky():
     '''
     make tess all-sky maps in both (ra,dec) and (elong, elat).
     verifies that the pattern look like it should.
@@ -271,243 +318,6 @@ def plot_yarmulkes():
              is_tess=True, is_radec=False)
 
 
-def plot_rect(lon, lat, nsectors, size=1, title='title', savdir='../results/',
-              savname=None, seabornmap='Paired', overplotd=None,
-              sector_number=None, plotknownpoints=False):
-    '''
-    overplotd (dict): for example,
-        {'name': 'clusters', 'annotateconditions': ['d < 1000', 'logt < 9']}
-        The condition format must be "(key) </>/== (value)" to match the
-        catalog being parsed.
-    '''
-
-    import cartopy.crs as ccrs
-
-    fig = plt.figure(figsize=(4,4))
-    center_long = 0
-    proj = ccrs.SouthPolarStereo(central_longitude=center_long,
-                                 true_scale_latitude=True)
-    ax = fig.add_subplot(1, 1, 1, projection=proj)
-
-    # the map size is set by where the scatter points are. (but try anyway).
-    minlat, maxlat = -90, -10
-    ax.set_extent([-180, 180, minlat, maxlat], ccrs.PlateCarree())
-
-    if plotknownpoints:
-        ksize=30
-        klon = np.array([-15,15,-30,3,130])
-        klat = np.array([-50, -45, -15, -80,-80])
-        knsectors = np.array([5,2,3,4,12])
-
-    # make colormap
-    import seaborn as sns
-    if seabornmap=='Paired':
-        rgbs = sns.color_palette(seabornmap, n_colors=13, desat=0.9)
-        cbarbounds = list(np.arange(0.5,14.5,1))
-        bounds= list(np.arange(0.5,14.5,1))
-    elif seabornmap=='Blues':
-        rgbs = sns.color_palette(seabornmap, n_colors=10, desat=1.)
-        rgbs = rgbs[3:]
-        cbarbounds = list(np.arange(0.5,14.5,1))
-        bounds= list(np.arange(0.5,4.5,1))
-    else:
-        raise NotImplementedError
-    cmap = mpl.colors.ListedColormap(rgbs)
-    norm = mpl.colors.BoundaryNorm(bounds, cmap.N)
-
-    if plotknownpoints:
-        # sanity check: plotting the known points. are they where u expect?
-        cax = ax.scatter(klon, klat, c=knsectors, s=ksize, lw=0, zorder=2,
-                         cmap=cmap, norm=norm, rasterized=True,
-                         transform=ccrs.PlateCarree())
-
-    # plot the given stars that are passed (usually from TIC)
-    lon[lon>180] -= 360
-    cax = ax.scatter(lon, lat, c=nsectors, s=size, lw=0, zorder=2,
-                     cmap=cmap, norm=norm, rasterized=True,
-                     transform=ccrs.PlateCarree())
-    ticlon, ticlat = lon, lat
-
-    if type(overplotd)==dict:
-
-        if overplotd['name']=='clusters':
-            from get_targets import _get_kharchenko_2013
-            df = _get_kharchenko_2013()
-            lon, lat = np.array(df['ecliptic_long']), np.array(df['ecliptic_lat'])
-            names = np.array(df['Name'])
-        elif overplotd['name']=='knownplanet':
-            from get_targets import _get_TIC71_sublist
-            df = _get_TIC71_sublist(sublist=overplotd['name'])
-            # np array version of e.g., ("knownplanet" in arrayname)
-            sel = np.flatnonzero(np.core.defchararray.find(
-                    np.array(df['SPEC_LIST']).astype(str),
-                    overplotd['name'])!=-1)
-
-            lon, lat = np.array(df['ECLONG'])[sel], np.array(df['ECLAT'])[sel]
-
-            #FIXME
-            names, is_transiting = _get_knownplanet_names_transits(df.iloc[sel])
-
-
-        else:
-            raise NotImplementedError
-
-        sel = df['total_sectors_obsd']>0
-        sel &= df['sector_{:d}'.format(sector_number)]>0
-
-        # plot the positions of objects.
-        lon[lon>180] -= 360
-        _ = ax.scatter(lon[sel], lat[sel], c='darkorange', s=10, lw=0, zorder=4,
-                       rasterized=True, transform=ccrs.PlateCarree())
-        _ = ax.scatter(lon, lat, c='lightgray', s=1, lw=0, zorder=3,
-                       rasterized=True, transform=ccrs.PlateCarree())
-
-        if overplotd['name']=='knownplanet':
-            sel &= is_transiting==1
-            _ = ax.scatter(lon[sel], lat[sel], c='lime', s=10, lw=0,
-                           zorder=5, rasterized=True,
-                           transform=ccrs.PlateCarree())
-
-        # annotate them
-        subsel = sel
-        conditions = overplotd['annotateconditions']
-        for condition in conditions:
-            if condition == '':
-                continue
-            cs = condition.split(' ')
-            if cs[1] == '<':
-                subsel &= df[cs[0]] < float(cs[2])
-            elif cs[1] == '>':
-                subsel &= df[cs[0]] > float(cs[2])
-            elif cs[1] == '==':
-                subsel &= df[cs[0]] == float(cs[2])
-            else:
-                raise NotImplementedError
-        transform = ccrs.PlateCarree()._as_mpl_transform(ax)
-
-        arrowprops = dict(facecolor='gray', edgecolor='gray', arrowstyle='->',
-                          linewidth=0.5, connectionstyle='arc3,rad=-0.05')
-        bbox = dict(facecolor='white',edgecolor='gray',
-                    alpha=0.95,linewidth=0.5,pad=0.2)
-
-        middle_elon = np.mean(ticlon[np.abs(ticlat)<45])
-        diff = 45
-        elon_start= np.remainder(middle_elon + diff, 360)
-        elon_stop = np.remainder(middle_elon - diff, 360)
-        text_elon = np.linspace(elon_start,elon_stop,len(lat[subsel]))
-        text_elat = -20*np.ones_like(text_elon)
-        if sector_number in [5,6,7,9,10,11]:
-            text_elon = np.remainder(
-                        np.linspace(elon_start,elon_stop+360,len(lat[subsel])),
-                        360)
-
-        for ix, sname, alon, alat in list(
-            zip(range(len(names[subsel])), names[subsel],
-                lon[subsel], lat[subsel])):
-
-            ax.annotate(sname, xy=(alon,alat), xycoords=transform,
-                        xytext=(text_elon[ix], text_elat[ix]),
-                        textcoords=transform, ha='center', va='top',
-                        arrowprops=arrowprops, bbox=bbox, fontsize='xx-small',
-                        zorder=4)
-    else:
-        pass
-
-    # set up colorbar
-    cbar = fig.colorbar(cax, cmap=cmap, norm=norm, boundaries=cbarbounds,
-                        fraction=0.04, pad=0.03, ticks=np.arange(13)+1,
-                        orientation='vertical')
-    ylabels = np.arange(1,14,1)
-    cbar.ax.set_yticklabels(map(str, ylabels))
-    cbar.set_label('number of pointings', rotation=270, labelpad=10)
-    cbar.ax.tick_params(direction='in')
-
-    # make grid lines and label the spiral
-    ax.gridlines(linewidth=0.5, linestyle='--', color='lightgray', zorder=-1)
-    lonlabels = np.arange(-120,180+60,60)
-    latlabels = -10*np.ones_like(lonlabels)
-    ix = 0
-    for lon, lat in list(zip(lonlabels, latlabels)):
-        if lon >= 0:
-            ax.text(lon, lat-ix*10, str('({:d},{:d})'.format(lon,lat-ix*10)),
-                    fontsize='xx-small', transform=ccrs.PlateCarree(),
-                    ha='center', va='center')
-        else:
-            ax.text(lon, lat-ix*10,
-                    str('({:d},{:d})'.format(lon+360,lat-ix*10)),
-                    fontsize='xx-small', transform=ccrs.PlateCarree(),
-                    ha='center', va='center')
-        ix += 1
-    ax.text(0.99,0.01,'ecliptic coords',
-            fontsize='xx-small',transform=ax.transAxes,
-            ha='right',va='bottom')
-    ax.text(0.01,0.01,'github.com/lgbouma/tessmaps',
-            fontsize='xx-small',transform=ax.transAxes,
-            ha='left',va='bottom')
-
-    ax.set_title(title, y=1.0, fontsize='x-small')
-
-    # set circle/rect/square boundary
-    import matplotlib.path as mpath
-    set_circle_boundary = False
-    set_rectangle_boundary = False
-    if set_circle_boundary:
-        phi = np.linspace(0, 2*np.pi, 100)
-        center, radius = [0.5, 0.5], 0.6
-        vertices = np.vstack([np.sin(phi), np.cos(phi)]).T
-        circle = mpath.Path(vertices * radius + center)
-        ax.set_boundary(circle, transform=ax.transAxes)
-    elif set_rectangle_boundary:
-        raise NotImplementedError
-        # elat, elon pairs. clockwise.
-        vertices = np.array([(-70,90),(-70,-150),(-5,-30),(-5,-60),(-70,90)])
-        import IPython; IPython.embed()
-        rect = mpath.Path(vertices)
-        ax.set_boundary(rect, transform=ccrs.PlateCarree())
-    else:
-        pass
-
-    fig.tight_layout()
-
-    fig.savefig(savdir+savname.replace('pdf','png'),dpi=400,
-                bbox_inches='tight')
-    print('made {:s}'.format(savdir+savname.replace('pdf','png')))
-
-
-def plot_rectmaps(sector_number, seabornmap='Paired', overplotd=None,
-                  title_append=''):
-    '''
-    # sector_number: 0-12, for southern ecl. 0: July 25, 2018.
-    # seabornmap: 'Paired' or 'Blues'
-    # overplotd: None or Kharchenko
-    overplotd (dict): for example,
-        {'name': 'clusters', 'annotateconditions': ['d < 1000', 'logt < 9']}
-        The condition format must be "(key) </>/== (value)" to match the
-        catalog being parsed.
-    '''
-
-
-    df = pd.read_csv('../data/TIC71_prioritycut_tess_sectors.csv')
-    ra, dec = np.array(df['RA']), np.array(df['DEC'])
-    elon, elat = np.array(df['ECLONG']), np.array(df['ECLAT'])
-    totsectors = np.array(df['total_sectors_obsd'])
-    this_sector = np.array(df['sector_{:d}'.format(sector_number)])
-    sel = this_sector > 0
-
-    if overplotd:
-        savname ='tess_rectmap_sector{:d}_{:s}.pdf'.format(
-            sector_number, overplotd['name'])
-    else:
-        savname ='tess_rectmap_sector{:d}.pdf'.format(sector_number)
-
-    title = 'CTL7.1 top 250k, sector {:d}.'.format(sector_number) +\
-            ' tess.mit.edu/science/tess-pointing'+title_append
-
-    plot_rect(elon[sel], elat[sel], totsectors[sel], size=0.25, title=title,
-              savname=savname, seabornmap=seabornmap,
-              overplotd=overplotd, sector_number=sector_number)
-
-
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(
@@ -518,11 +328,11 @@ if __name__ == '__main__':
         help='0-12 for first year.')
     parser.add_argument(
         '-k13', '--kharchenko_2013', action='store_true',
-        help='Overplot Kharchenko+ 2013 clusters on TIC7.1 rect map.',
+        help='Overplot Kharchenko+ 2013 clusters on TESS footprint.',
         default=False)
     parser.add_argument(
         '-kp', '--known_planets', action='store_true',
-        help='Overplot Kharchenko+ 2013 clusters on TIC7.1 rect map.',
+        help='Overplot known planets on TESS footprint.',
         default=False)
     parser.add_argument(
         '-rm', '--rectmap_plain', action='store_true',
@@ -540,15 +350,19 @@ if __name__ == '__main__':
 
     if args.sanity_check:
         sanity_check()
+
     if args.all_sky:
-        plot_yarmulkes()
+        plot_allsky()
+
     if args.rectmap_plain:
         assert type(args.sector_number)==int
-        plot_rectmaps(args.sector_number)
+        _rectmap_plain(args.sector_number)
+
     if args.kharchenko_2013:
         assert not type(args.sector_number)==int
         for sector_number in range(13):
             _kharchenko_2013_rectmap(sector_number)
+
     if args.known_planets:
         assert not type(args.sector_number)==int
         for sector_number in range(13):

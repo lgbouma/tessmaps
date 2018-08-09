@@ -102,8 +102,34 @@ def _get_TIC71_sublist(ctldir='/Users/luke/local/TIC/CTL71/',
 
     return df
 
+
+def _get_kane_knownplanets():
+    '''
+    sublist: str in ["knownplanet" , ... ]
+    '''
+
+    slpath = '../data/MAST_Crossmatch_CTL.csv'
+    sltspath = '../data/MAST_Crossmatch_CTL_tess_sectors.csv'
+
+    sldf = pd.read_csv(slpath)
+
+    if not os.path.exists(sltspath):
+        ra = np.array(sldf['ra'])
+        dec = np.array(sldf['dec'])
+        coords = SkyCoord(ra=ra*u.degree, dec=dec*u.degree, frame='icrs')
+
+        _ = get_time_on_silicon(coords)
+        df = sldf.join(_, how='left', rsuffix='kane')
+        df.to_csv(sltspath, index=False)
+
+    else:
+        df = pd.read_csv(sltspath)
+
+    return df
+
+
 def get_targets(sector_number, get_kharchenko_2013=True, get_TIC71=True,
-               TIC71_sublist=None):
+               TIC71_sublist=None, get_kane_knownplanets=None):
     '''
     For a given TESS sector, what are some good objects (stars, clusters,
     galaxies) to be aware of?
@@ -113,6 +139,7 @@ def get_targets(sector_number, get_kharchenko_2013=True, get_TIC71=True,
     * CTL 7.1, from filtergraph, with sublists:
         ['bright', 'cooldwarf', 'cooldwarf;bright', 'hotsubdwarf',
          'knownplanet', 'knownplanet;bright']
+    * Stephen Kane's known planet list.
 
     Some other ideas:
     * Mamajek 2016's pre-Gaia association census.
@@ -166,15 +193,22 @@ def get_targets(sector_number, get_kharchenko_2013=True, get_TIC71=True,
         if TIC71_sublist not in oksublists:
             raise AssertionError
 
+        #typical approach: we want the thing direct from the TIC's list.
         df = _get_TIC71_sublist(sublist=TIC71_sublist)
-
         # np array version of e.g., ("knownplanet" in arrayname)
         sel = np.flatnonzero(np.core.defchararray.find(
                 np.array(df['SPEC_LIST']).astype(str),
                 TIC71_sublist)!=-1)
 
+        #special case: use Stephen Kane's knownplanet list directly
+        if get_kane_knownplanets:
+            del df, sel
+            df = _get_kane_knownplanets()
+            sel = np.isfinite(np.array(df['ra'])) #FIXME hacky
+
         from plot_skymaps_of_targets import _get_knownplanet_names_transits
-        names, is_transiting = _get_knownplanet_names_transits(df.iloc[sel])
+        names, is_transiting = _get_knownplanet_names_transits(df.iloc[sel],
+                                                               is_kane_list=get_kane_knownplanets)
 
         dfsel = df.iloc[sel]
         del sel
@@ -183,35 +217,58 @@ def get_targets(sector_number, get_kharchenko_2013=True, get_TIC71=True,
             dfsel['is_transiting'] = is_transiting
             subcols = ['pl_hostname','is_transiting','PRIORITY',
                        'TESSMAG','RADIUS','total_sectors_obsd']
+            if get_kane_knownplanets:
+                subcols = ['pl_hostname','is_transiting',
+                           'Tmag','total_sectors_obsd']
         else:
             dfsel = -1
             raise NotImplementedError
 
         print('\n'+'*'*50)
-        print('All {:s} from TIC7.1 in sector {:d}:\n'.format(TIC71_sublist,
-              sector_number))
+        if not get_kane_knownplanets:
+            print('All {:s} from TIC7.1 in sector {:d}:\n'.format(TIC71_sublist,
+                  sector_number))
+        else:
+            print('All {:s} from Stephen Kane\'s list in sector {:d}:\n'.format(TIC71_sublist,
+                  sector_number))
 
         sel = dfsel['total_sectors_obsd']>0
         sel &= dfsel['sector_{:d}'.format(sector_number)]>0
         if TIC71_sublist == 'knownplanet':
-            print(dfsel[subcols][sel].
-                  sort_values(['is_transiting','PRIORITY','TESSMAG','RADIUS'],
-                              ascending=[False,False,True,True]).
-                  to_string(index=False,col_space=10))
+            if not get_kane_knownplanets:
+                print(dfsel[subcols][sel].
+                      sort_values(['is_transiting','PRIORITY','TESSMAG','RADIUS'],
+                                  ascending=[False,False,True,True]).
+                      to_string(index=False,col_space=10))
+            else:
+                print(dfsel[subcols][sel].
+                      sort_values(['is_transiting','Tmag'],
+                                  ascending=[False,True]).
+                      to_string(index=False,col_space=10))
         else:
             raise NotImplementedError
 
-        print('\n500 most-observed {:s} from TIC7.1 in South:\n'.format(
-              TIC71_sublist))
+        if get_kane_knownplanets:
+            print('\n500 most-observed {:s} from Stephen Kane\'s list in South:\n'.format(
+                  TIC71_sublist))
+        else:
+            print('\n500 most-observed {:s} from TIC7.1 in South:\n'.format(
+                  TIC71_sublist))
 
         sel = dfsel['total_sectors_obsd']>0
         if TIC71_sublist=='knownplanet':
-            print(dfsel[subcols][sel].
-                  sort_values(['is_transiting','total_sectors_obsd',
-                               'PRIORITY','TESSMAG','RADIUS'],
-                              ascending=[False,False,False,True,True]).
-                  head(500).
-                  to_string(index=False,col_space=12))
+            if not get_kane_knownplanets:
+                print(dfsel[subcols][sel].
+                      sort_values(['is_transiting','total_sectors_obsd',
+                                   'PRIORITY','TESSMAG','RADIUS'],
+                                  ascending=[False,False,False,True,True]).
+                      head(500).
+                      to_string(index=False,col_space=12))
+            else:
+                print(dfsel[subcols][sel].
+                      sort_values(['is_transiting','total_sectors_obsd','Tmag'],
+                                  ascending=[False,False,True]).
+                      to_string(index=False,col_space=10))
         else:
             raise NotImplementedError
 
@@ -238,9 +295,13 @@ if __name__ == '__main__':
     parser.add_argument('-ts', '--TIC71_sublist', type=str,
                         default=None, help=helpstr)
 
+    parser.add_argument('-kane', '--get_kane_knownplanets', action='store_true',
+        help='We\'re using Stephen Kane\'s knownplanet list.', default=False)
+
     args = parser.parse_args()
 
     get_targets(args.sector_number,
                 get_kharchenko_2013=args.get_kharchenko_2013,
                 get_TIC71=args.get_TIC71,
-                TIC71_sublist=args.TIC71_sublist)
+                TIC71_sublist=args.TIC71_sublist,
+                get_kane_knownplanets=args.get_kane_knownplanets)
