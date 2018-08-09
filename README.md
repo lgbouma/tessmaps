@@ -91,3 +91,15 @@ source activate tmaps
 (tmaps) python setup.py install
 ```
 Then you should be set.
+
+
+IF YOU WRITE A PAPER WITH THESE TOOLS, PLEASE CITE
+----------
+* the TESS mission
+* The TIC7.1 paper by Stassun et al for coordinates and properties of TIC objects
+* Sullivan+ 2015 and Bouma+ 2017 for the focal glame geometry model
+* lists appropriate to whatever you overplot:
+  * if you use the knownplanets list, cite Stephen Kane
+  * if you plot out the Kharchenko+ 2013 catalog clusters, cite them
+* astropy
+* astroquery
