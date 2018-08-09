@@ -175,6 +175,13 @@ def get_targets(sector_number, get_kharchenko_2013=True, get_TIC71=True,
                           ascending=[False,True]).
               to_string(index=False,col_space=12))
 
+        csvpath = '../results/kharchenko13_sector{:d}.csv'.format(
+                sector_number)
+        df[subcols][sel].sort_values(
+            ['total_sectors_obsd','logt'],
+            ascending=[False,True]).to_csv(csvpath, index=False)
+        print('\nsaved to {:s}'.format(csvpath))
+
         print('\n100 most-observed Kharchenko+ 2013 clusters in South:\n')
 
         sel = df['total_sectors_obsd']>0
@@ -207,8 +214,8 @@ def get_targets(sector_number, get_kharchenko_2013=True, get_TIC71=True,
             sel = np.isfinite(np.array(df['ra'])) #FIXME hacky
 
         from plot_skymaps_of_targets import _get_knownplanet_names_transits
-        names, is_transiting = _get_knownplanet_names_transits(df.iloc[sel],
-                                                               is_kane_list=get_kane_knownplanets)
+        names, is_transiting = _get_knownplanet_names_transits(
+            df.iloc[sel], is_kane_list=get_kane_knownplanets)
 
         dfsel = df.iloc[sel]
         del sel
@@ -226,11 +233,11 @@ def get_targets(sector_number, get_kharchenko_2013=True, get_TIC71=True,
 
         print('\n'+'*'*50)
         if not get_kane_knownplanets:
-            print('All {:s} from TIC7.1 in sector {:d}:\n'.format(TIC71_sublist,
-                  sector_number))
+            print('All {:s} from TIC7.1 in sector {:d}:\n'.
+                  format(TIC71_sublist, sector_number))
         else:
-            print('All {:s} from Stephen Kane\'s list in sector {:d}:\n'.format(TIC71_sublist,
-                  sector_number))
+            print('All {:s} from Stephen Kane\'s list in sector {:d}:\n'.
+                  format(TIC71_sublist, sector_number))
 
         sel = dfsel['total_sectors_obsd']>0
         sel &= dfsel['sector_{:d}'.format(sector_number)]>0
@@ -245,6 +252,14 @@ def get_targets(sector_number, get_kharchenko_2013=True, get_TIC71=True,
                       sort_values(['is_transiting','Tmag'],
                                   ascending=[False,True]).
                       to_string(index=False,col_space=10))
+
+                csvpath = '../results/kane_knownplanets_sector{:d}.csv'.format(
+                        sector_number)
+                dfsel[subcols][sel].sort_values(
+                    ['is_transiting','Tmag'], ascending=[False,True]
+                    ).to_csv(csvpath, index=False)
+                print('\n saved {:s}'.format(csvpath))
+
         else:
             raise NotImplementedError
 

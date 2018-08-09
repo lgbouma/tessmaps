@@ -3,3 +3,7 @@
 # too big for github
 data/TIC71_prioritycut.csv
 data/TIC71_prioritycut_tess_sectors.csv
+tessmaps.egg-info/
+dist/
+build/
+tests/temp.png

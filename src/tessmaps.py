@@ -15,11 +15,28 @@ import pandas as pd, numpy as np
 from astropy import units as u
 from astropy.coordinates import SkyCoord
 
-from get_time_on_silicon import get_time_on_silicon
+__location__ = os.path.realpath(os.path.join(os.getcwd(),
+                                             os.path.dirname(__file__)))
 
 def _get_TIC_coords_count(sector_number):
 
-    df = pd.read_csv('../data/TIC71_prioritycut_tess_sectors.csv')
+    # if we are running as a package, then __location__ is the header
+    # directory. if we're running a shell script from source, we need a
+    # different relative path.
+    try:
+        ticpath = os.path.join(__location__, 'data',
+                               'TIC71_prioritycut_tess_sectors.csv')
+        df = pd.read_csv(ticpath)
+    except FileNotFoundError:
+        pass
+
+    try:
+        ticpath = os.path.join(__location__.replace('src', 'data'),
+                               'TIC71_prioritycut_tess_sectors.csv')
+        df = pd.read_csv(ticpath)
+    except FileNotFoundError:
+        raise FileNotFoundError('poorly defined TIC path')
+
     ra, dec = np.array(df['RA']), np.array(df['DEC'])
     elon, elat = np.array(df['ECLONG']), np.array(df['ECLAT'])
     totsectors = np.array(df['total_sectors_obsd'])
@@ -107,9 +124,17 @@ def make_rect_map(sector_number, coords,
                      cmap=cmap, norm=norm, rasterized=True,
                      transform=ccrs.PlateCarree())
 
+    try:
+        # a somewhat hacky relative import solution
+        from . import get_time_on_silicon
+    except ImportError:
+        try:
+            import get_time_on_silicon
+        except:
+            raise ImportError
+
     # get sectors where passed coords are observed
-    from get_time_on_silicon import get_time_on_silicon
-    df = get_time_on_silicon(coords)
+    df = get_time_on_silicon.get_time_on_silicon(coords)
 
     sel = df['total_sectors_obsd']>0
     sel &= df['sector_{:d}'.format(sector_number)]>0
