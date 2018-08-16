@@ -17,4 +17,5 @@ tm.make_sector_list(sector_number, coords, names=names,
 from __future__ import (division, print_function, absolute_import,
                         unicode_literals)
 
-from . import tessmaps, get_time_on_silicon, plot_skymaps_of_targets
+from . import tessmaps, get_time_on_silicon, plot_skymaps_of_targets, \
+            get_targets, get_data

@@ -28,14 +28,13 @@ def _get_TIC_coords_count(sector_number):
                                'TIC71_prioritycut_tess_sectors.csv')
         df = pd.read_csv(ticpath)
     except FileNotFoundError:
-        pass
-
-    try:
-        ticpath = os.path.join(__location__.replace('src', 'data'),
-                               'TIC71_prioritycut_tess_sectors.csv')
-        df = pd.read_csv(ticpath)
-    except FileNotFoundError:
-        raise FileNotFoundError('poorly defined TIC path')
+        try:
+            ticpath = os.path.join(__location__.replace('src', 'data'),
+                                   'TIC71_prioritycut_tess_sectors.csv')
+            df = pd.read_csv(ticpath)
+        except FileNotFoundError:
+            raise FileNotFoundError(
+                'poorly defined TIC path \n{:s}'.format(ticpath))
 
     ra, dec = np.array(df['RA']), np.array(df['DEC'])
     elon, elat = np.array(df['ECLONG']), np.array(df['ECLAT'])

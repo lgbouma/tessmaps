@@ -20,9 +20,15 @@ import numpy as np, pandas as pd
 from astropy import units as u
 from astropy.coordinates import SkyCoord
 
-from get_data import load_kharchenko_2013, make_prioritycut_ctl, \
-        make_sublist_ctl
-from get_time_on_silicon import get_time_on_silicon
+try:
+    from get_data import load_kharchenko_2013, make_prioritycut_ctl, \
+            make_sublist_ctl
+    from get_time_on_silicon import get_time_on_silicon
+except:
+    from .get_data import load_kharchenko_2013, make_prioritycut_ctl, \
+            make_sublist_ctl
+    from .get_time_on_silicon import get_time_on_silicon
+
 
 def _get_kharchenko_2013():
 
