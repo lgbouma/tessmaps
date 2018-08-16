@@ -10,7 +10,7 @@ that.
 INSTALL
 ----------
 Currently the only install is from source. To seemlessly install the virtual
-environment, you must use anaconda:
+environment, use anaconda:
 
 ```
 cd $SOME_DIRECTORY
@@ -37,8 +37,8 @@ USAGE
 ----------
 To see if some coordinates are observed:
 ```
-from tessmaps import tessmaps as tm
-df = tm.get_time_on_silicon(coords)
+from tessmaps import get_time_on_silicon as gts
+df = gts.get_time_on_silicon(coords)
 ```
 where `df` is a pandas DataFrame that tells you in which sector the observation
 occurs, using the pointings given by
@@ -48,6 +48,7 @@ plane geometry used by Sullivan et al (2015) and Bouma et al (2017).
 A separate module accepts sector numbers and coordinates, and makes sky maps
 with optional annotations of objects on silicon:
 ```
+from tessmaps import tessmaps as tm
 tm.make_rect_map(sector_number, coords, names=names,
                  annotate_bools=is_transiting, title=title,
                  bkgnd_cmap='Blues', savname=savname)
@@ -65,13 +66,12 @@ You can also make all-sky maps,
 Take a look at `/results/` to see similar plots for the southern hemisphere's
 survey.
 
-Finally, there's a that converts this information to text and csv files:
+Finally, there's a module that converts this information to text and csv files:
 ```
-tm.make_sector_list(sector_number, coords, names=names,
-                    annotate_bools=is_transiting, title=title,
-                    bkgnd_cmap='Blues', savname=savname)
-
+tm.make_sector_list(sector_number, coords, names=names, savname=savname)
 ```
+the csv files contain TIC IDs, sector properties, coordinates, and optionally
+the passed names.
 
 You can also use the shell scripts to regenerate everything. (See the docstrings).
 
