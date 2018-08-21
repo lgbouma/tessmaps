@@ -43,7 +43,9 @@ df = gts.get_time_on_silicon(coords)
 where `df` is a pandas DataFrame that tells you in which sector the observation
 occurs, using the pointings given by
 [MIT's TESS Science Office](https://tess.mit.edu/tess-pointing) and the focal
-plane geometry used by Sullivan et al (2015) and Bouma et al (2017).
+plane geometry used by
+[Sullivan et al (2015)](https://arxiv.org/abs/1506.03845) and
+[Bouma et al (2017)](https://arxiv.org/abs/1705.08891).
 
 A separate module accepts sector numbers and coordinates, and makes sky maps
 with optional annotations of objects on silicon:
@@ -76,18 +78,6 @@ the passed names.
 You can also use the shell scripts to regenerate everything. (See the docstrings).
 
 
-Default lists:
-----------
-* Kharchenko+ 2013's cluster list.
-* CTL 7.1, from filtergraph, which includes:
-  * known planets from Stephen Kane
-	* known planets (as parsed from the SPEC\_LIST keyword. This is not perfect,
-      for reasons that are being debugged.)
-	* cool dwarf stars
-	* hot subdwarfs
-	* WDs
-
-
 IF YOU WRITE A PAPER WITH THESE TOOLS, PLEASE CITE
 ----------
 * the TESS mission
@@ -99,12 +89,7 @@ IF YOU WRITE A PAPER WITH THESE TOOLS, PLEASE CITE
 * astropy
 * astroquery
 
-
 TODO
 ----------
 * implement `tm.make_sector_list`
-* add Gagne et al 2018's BANYAN association list.
-* add Mamajek 2016's pre-Gaia association census.
-* best and brightest metal-poor stars (Kevin Schlaufmann has worked on these)
-* maybe add close stars (distance less than _x_ parsecs)
 * consider making pip installable
