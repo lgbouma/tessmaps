@@ -3,41 +3,16 @@ Overview
 
 This repo contains some tools for understanding what TESS is looking at.
 
-Useful pull requests are gratefully accepted. Don't expect the focal plane
-geometry model to be 100% accurate. Rely on official TESS-mission products for
-that.
-
-INSTALL
-----------
-Currently the only install is from source. To seemlessly install the virtual
-environment, use anaconda:
-
-```
-cd $SOME_DIRECTORY
-git clone https://github.com/lgbouma/tessmaps
-cd tessmaps
-conda env create -f environment.yml -n tmaps
-source activate tmaps
-(tmaps) python setup.py install
-```
-
-A nasaexoplanetarchive query to crossmatch positions to planet names currently
-(2018/08/06) depends on a bleeding-edge `astroquery` build. To make that:
-```
-cd $SOME_DIRECTORY
-git clone https://github.com/astropy/astroquery
-cd astroquery
-source activate tmaps
-(tmaps) python setup.py install
-```
-Then you should be ready.
-
+Useful pull requests are gratefully accepted. The focal plane geometry model is
+not 100% accurate, but it's pretty good. 
 
 USAGE
 ----------
 To see if some coordinates are observed:
 ```
+from astropy.coordinates import SkyCoord
 from tessmaps import get_time_on_silicon as gts
+coords = SkyCoord(['124.532 -68.313', '42.42, -42.42'], unit='deg')
 df = gts.get_time_on_silicon(coords)
 ```
 where `df` is a pandas DataFrame that tells you in which sector the observation
@@ -76,6 +51,32 @@ the csv files contain TIC IDs, sector properties, coordinates, and optionally
 the passed names.
 
 You can also use the shell scripts to regenerate everything. (See the docstrings).
+
+
+INSTALL
+----------
+Currently the only install is from source. To seemlessly install the virtual
+environment, use anaconda:
+
+```
+cd $SOME_DIRECTORY
+git clone https://github.com/lgbouma/tessmaps
+cd tessmaps
+conda env create -f environment.yml -n tmaps
+source activate tmaps
+(tmaps) python setup.py install
+```
+
+A nasaexoplanetarchive query to crossmatch positions to planet names currently
+(2018/08/06) depends on a bleeding-edge `astroquery` build. To make that:
+```
+cd $SOME_DIRECTORY
+git clone https://github.com/astropy/astroquery
+cd astroquery
+source activate tmaps
+(tmaps) python setup.py install
+```
+Then you should be ready.
 
 
 IF YOU WRITE A PAPER WITH THESE TOOLS, PLEASE CITE
