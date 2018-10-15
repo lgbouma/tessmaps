@@ -12,7 +12,7 @@ To see if some coordinates are observed:
 ```
 from astropy.coordinates import SkyCoord
 from tessmaps import get_time_on_silicon as gts
-coords = SkyCoord(['124.532 -68.313', '42.42, -42.42'], unit='deg')
+coords = SkyCoord(['124.532, -68.313'], ['42.42, -42.42'], unit='deg')
 df = gts.get_time_on_silicon(coords)
 ```
 where `df` is a pandas DataFrame that tells you in which sector the observation
