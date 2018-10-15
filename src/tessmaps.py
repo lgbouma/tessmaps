@@ -75,7 +75,6 @@ def make_rect_map(sector_number, coords,
         bkgnd_cmap: 'Paired' or 'Blues'.
         ms: marker size for overplotted points.
     '''
-
     ticelon, ticelat, tictotsectors = _get_TIC_coords_count(sector_number)
 
     import cartopy.crs as ccrs
@@ -141,6 +140,11 @@ def make_rect_map(sector_number, coords,
     # plot the positions of passed coords
     elon, elat = df['elon'], df['elat']
     elon[elon>180] -= 360
+
+    if len(elon[sel]) == 0:
+        print('did not get any objects on silicon. skipping map-making!')
+        return 0
+
     _ = ax.scatter(elon[sel], elat[sel], c='darkorange', s=ms, lw=0, zorder=4,
                    rasterized=True, transform=ccrs.PlateCarree())
     _ = ax.scatter(elon, elat, c='lightgray', s=1, lw=0, zorder=3,
