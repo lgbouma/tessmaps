@@ -12,7 +12,7 @@ To see if some coordinates are observed:
 ```
 from astropy.coordinates import SkyCoord
 from tessmaps import get_time_on_silicon as gts
-coords = SkyCoord(['124.532, -68.313'], ['42.42, -42.42'], unit='deg')
+coords = SkyCoord([124.532, -68.313], [42.42, -42.42], unit='deg')
 df = gts.get_time_on_silicon(coords)
 ```
 where `df` is a pandas DataFrame that tells you in which sector the observation
@@ -25,12 +25,12 @@ plane geometry used by
 A separate module accepts sector numbers and coordinates, and makes sky maps
 with optional annotations of objects on silicon:
 ```
-from tessmaps import tessmaps as tm
+# see `tests/check_rectmaps.py` for a worked example
 tm.make_rect_map(sector_number, coords, names=names,
                  annotate_bools=is_transiting, title=title,
-                 bkgnd_cmap='Blues', savname=savname)
-
+                 bkgnd_cmap='Blues', savname=savname, savdir=savdir)
 ```
+
 The known exoplanets in the first science sector
 [look like this](https://github.com/lgbouma/tessmaps/blob/master/results/tess_rectmap_knownplanets_sector0.png).
 
