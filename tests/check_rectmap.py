@@ -1,3 +1,6 @@
+'''
+run this script from anywhere on your system. change `savdir` below!
+'''
 import numpy as np
 from tessmaps import tessmaps as tm
 
