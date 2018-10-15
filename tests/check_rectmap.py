@@ -17,3 +17,5 @@ sector_number = 2
 tm.make_rect_map(sector_number, coords, names=names,
                  annotate_bools=is_transiting, title=title,
                  bkgnd_cmap='Blues', savname=savname, savdir=savdir)
+
+print('if you got here w/out errors, it worked!')

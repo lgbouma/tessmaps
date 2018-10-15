@@ -21,4 +21,5 @@ from tessmaps import get_time_on_silicon as gts
 df = gts.get_time_on_silicon(coords)
 
 from tessmaps import get_targets as gt
-import IPython; IPython.embed()
+
+print('if you got here w/out errors, it worked!')
