@@ -208,7 +208,8 @@ def given_cameras_get_stars_on_silicon(coords, cam_directions, verbose=True):
 
     np.testing.assert_array_almost_equal(
         separations, [24,48,72], decimal=2,
-        err_msg='camera separations should be 24 degrees.')
+        err_msg='camera separations should be 24 degrees. have {:s}'.
+        format(repr(cam_coords)))
 
     views_columns = ['n_camera', 'elon', 'elat', 'ra', 'dec']
     views = pd.DataFrame(views, columns=views_columns)
