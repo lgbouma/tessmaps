@@ -10,7 +10,12 @@ from astropy import units as u
 from glob import glob
 import os
 
-def make_prioritycut_ctl(datadir='/Users/luke/local/TIC/CTL71/', prioritycut=0.0015):
+def make_prioritycut_ctl(datadir='/Users/luke/local/TIC/CTL71/',
+                         prioritycut=0.0015,
+                         subcols = ['RA', 'DEC', 'TESSMAG', 'TEFF', 'PRIORITY',
+                                    'RADIUS', 'MASS', 'CONTRATIO', 'ECLONG',
+                                    'ECLAT', 'DIST', 'TICID', 'SPEC_LIST'],
+                         savpath = '../data/TIC71_prioritycut.csv'):
     '''
 
     I downloaded the 2018/07/07 CTL direct from
@@ -56,14 +61,13 @@ def make_prioritycut_ctl(datadir='/Users/luke/local/TIC/CTL71/', prioritycut=0.0
             └── header.txt
 
         prioritycut: 0.0015 corresponds to top 300k or so.
+
+        subcols: to write out in prioritycut csv
     '''
 
     with open(datadir+'header.txt') as f:
         hdr = f.readlines()[0]
-    columns = hdr.split(',')
-
-    subcols = ['RA', 'DEC', 'TESSMAG', 'TEFF', 'PRIORITY', 'RADIUS', 'MASS',
-               'CONTRATIO', 'ECLONG', 'ECLAT', 'DIST', 'TICID', 'SPEC_LIST']
+    columns = [l.strip('\n') for l in hdr.split(',')]
 
     subcats = np.sort(glob(datadir+'??-??.csv'))
 
@@ -89,8 +93,8 @@ def make_prioritycut_ctl(datadir='/Users/luke/local/TIC/CTL71/', prioritycut=0.0
             print('length of priorty-cut TIC list is {:d}'.format(len(df)))
         os.remove(temp)
 
-    df.to_csv('../data/TIC71_prioritycut.csv', index=False)
-    print('saved ../data/TIC71_prioritycut.csv')
+    df.to_csv(savpath, index=False)
+    print('saved {:s}'.format(savpath))
 
 
 def make_sublist_ctl(datadir='/Users/luke/local/TIC/CTL71/',
@@ -103,7 +107,7 @@ def make_sublist_ctl(datadir='/Users/luke/local/TIC/CTL71/',
 
     with open(datadir+'header.txt') as f:
         hdr = f.readlines()[0]
-    columns = hdr.split(',')
+    columns = [l.strip('\n') for l in hdr.split(',')]
 
     subcols = ['RA', 'DEC', 'TESSMAG', 'TEFF', 'PRIORITY', 'RADIUS', 'MASS',
                'CONTRATIO', 'ECLONG', 'ECLAT', 'DIST', 'TICID', 'SPEC_LIST']
