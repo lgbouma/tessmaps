@@ -94,13 +94,13 @@ def get_time_on_silicon(coords, lambda_init=315.8*u.degree, fov=24.*u.degree,
         w = wcs.WCS(naxis=2)
         w.wcs.crpix = ccd_center.value
         w.wcs.crval = [view['elon'].value, view['elat'].value]
-        ###w.wcs.crval = [view['ra'].value, view['dec'].value] # either works?
+        ###w.wcs.crval = [view['ra'].value, view['dec'].value] # either works
         w.wcs.cdelt = delt.value
         w.wcs.ctype = ['RA---TAN', 'DEC--TAN']
 
         # follow fits standards: The image pixel count starts with 1.
         x, y = w.wcs_world2pix(elon, elat, 1)
-        ###x, y = w.wcs_world2pix(ra, dec, 1) # either works?
+        ###x, y = w.wcs_world2pix(ra, dec, 1) # either works
 
         try:
             # the extra "1" is because of 1-based image count.
@@ -143,11 +143,161 @@ def get_time_on_silicon(coords, lambda_init=315.8*u.degree, fov=24.*u.degree,
     return df
 
 
+def given_cameras_get_stars_on_silicon(coords, cam_directions, verbose=True):
+    '''
+    If the TESS spacecraft points in a particular direction, which stars fall on
+    silicon?
+
+    Args:
+
+        coords (np.ndarray of astropy.coordinate.SkyCoords): array of astropy
+        coordinates for the stars that will be either on, or not on silicon.
+
+        cam_directions (list of float tuples): list with format:
+
+            [ (cam1_elat, cam1_elon),
+              (cam2_elat, cam2_elon),
+              (cam3_elat, cam3_elon),
+              (cam4_elat, cam4_elon) ],
+
+        where all entries are tuples of floats, and "cam1_elat" means ecliptic
+        latitude of camera 1 center.  This function will require that camera 2
+        is 24 degrees from camera 1, camera 3 is 48 degrees from camera 1, and
+        camera 4 is 72 degrees from camera 1.
+
+    Returns:
+
+        on_chip (np.ndarray): array of 1's and 0's for what falls on
+        silicon, and what does not. Same length as coords.
+
+    Nomenclature:
+        "Sector" means one "grouping" of 4 cameras. There are 13 sectors over
+        the first TESS year. "View" means one pointing of a camera, in a
+        sector. There are 26*4=104 views over the first two years.  This
+        function corresponds to only a single sector.
+    '''
+
+    n_coords = len(coords)
+    if verbose:
+        print('computing whether on silicon for {:d} objects'.
+              format(n_coords))
+
+    n_cameras = 4 # this will hopefully never change
+    n_sectors = 1 # this function is for a single sector
+    n_views = n_sectors*n_cameras
+
+    # compute camera central coordinates for the first year, given the initial
+    # longitude.
+    views, cam_coords = [], []
+    for n_camera, this_cam_dirn in zip( range(n_cameras), cam_directions ):
+
+        this_elat = this_cam_dirn[0]*u.deg
+        this_elon = this_cam_dirn[1]*u.deg
+
+        this_coord = SkyCoord(lon=this_elon,lat=this_elat,
+                              frame='barycentrictrueecliptic')
+
+        views.append([n_camera, this_elon, this_elat,
+                      this_coord.icrs.ra, this_coord.icrs.dec])
+
+        cam_coords.append(this_coord)
+
+    separations = [cam_coords[0].separation(cam_coords[1]).value,
+                   cam_coords[0].separation(cam_coords[2]).value,
+                   cam_coords[0].separation(cam_coords[3]).value ]
+
+    np.testing.assert_array_almost_equal(
+        separations, [24,48,72], decimal=2,
+        err_msg='camera separations should be 24 degrees.')
+
+    views_columns = ['n_camera', 'elon', 'elat', 'ra', 'dec']
+    views = pd.DataFrame(views, columns=views_columns)
+
+    # ccd info. see e.g., Huang et al, 2018. The gap size is a number inherited
+    # from Josh Winn's code.
+    fov=24.*u.degree
+    ccd_pix = 4096*u.pix
+    gap_pix = (2./0.015)*u.pix # about 133 pixels per gap
+    pixel_scale = u.pixel_scale(fov/(ccd_pix + gap_pix))
+    ccd_center = np.ones(2)*(ccd_pix + gap_pix) / 2
+    delt = (np.ones(2)*u.pix).to(u.degree, pixel_scale)
+
+    elon = coords.barycentrictrueecliptic.lon.value
+    elat = coords.barycentrictrueecliptic.lat.value
+    ra = coords.ra.value
+    dec = coords.dec.value
+
+    onchip = np.zeros_like(ra)
+    for ix, view in views.iterrows():
+
+        # create new WCS object. See. e.g., Calabretta & Greisen 2002, paper
+        # II, table 1. CRPIX: pixel-coordinates of reference pixel (center of
+        # image). CRVAL: celestial long (RA) and lat (dec) of reference pixel.
+        # CDELT: degrees per pixel at reference pixel location, i.e. the
+        # coordinate scale. CTYPE: gnomic projection.
+        w = wcs.WCS(naxis=2)
+        w.wcs.crpix = ccd_center.value
+        w.wcs.crval = [view['elon'].value, view['elat'].value]
+        ###w.wcs.crval = [view['ra'].value, view['dec'].value] # either works
+        w.wcs.cdelt = delt.value
+        w.wcs.ctype = ['RA---TAN', 'DEC--TAN']
+
+        # follow fits standards: The image pixel count starts with 1.
+        x, y = w.wcs_world2pix(elon, elat, 1)
+        ###x, y = w.wcs_world2pix(ra, dec, 1) # either works
+
+        try:
+            # the extra "1" is because of 1-based image count.
+            onchip += (  # lower left CCD
+                         ((x > 0.0) &
+                         (x < (ccd_pix.value-gap_pix.value)/2.-1.) &
+                         (y > 0.0) &
+                         (y < (ccd_pix.value-gap_pix.value)/2.-1.))
+                     |   # lower right CCD
+                         ((x > (ccd_pix.value+gap_pix.value)/2.-1.) &
+                         (x < (ccd_pix.value+gap_pix.value)-1.) &
+                         (y > 0.0) &
+                         (y < (ccd_pix.value-gap_pix.value)/2.-1.))
+                     |   # upper right CCD
+                         ((x > (ccd_pix.value+gap_pix.value)/2.-1.) &
+                         (x < (ccd_pix.value+gap_pix.value)-1.) &
+                         (y > (ccd_pix.value+gap_pix.value)/2.-1.) &
+                         (y < (ccd_pix.value+gap_pix.value)-1.))
+                     |   # upper left CCD 
+                         ((x > 0.0) &
+                         (x < (ccd_pix.value-gap_pix.value)/2.-1.) &
+                         (y > (ccd_pix.value+gap_pix.value)/2.-1.) &
+                         (y < (ccd_pix.value+gap_pix.value)-1.))
+                     )
+
+        except Exception as e:
+
+            print('failed computing onchip. error msg: {:s}'.format(e))
+            return 0
+
+    if verbose:
+        print('computed sector numbers for {:d} stars/objects'.
+              format(n_coords))
+
+    return onchip.astype(np.int)
+
+
+
 if __name__ == '__main__':
 
     np.random.seed(42)
-    ras = np.random.uniform(low=0,high=359,size=420)*u.degree
+
+    ras = np.random.uniform(low=0,high=359,size=200)*u.degree
     decs = np.random.uniform(low=-89,high=89,size=len(ras))*u.degree
     coords = SkyCoord(ra=ras, dec=decs)
 
-    get_time_on_silicon(coords)
+    cam_directions = [
+        (-18, 315.8),
+        (-42, 315.8),
+        (-66, 315.8),
+        (-90, 315.8)
+    ]
+
+    onchip = given_cameras_get_stars_on_silicon(coords, cam_directions)
+
+    df = get_time_on_silicon(coords)
