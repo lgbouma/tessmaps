@@ -143,7 +143,8 @@ def get_time_on_silicon(coords, lambda_init=315.8*u.degree, fov=24.*u.degree,
     return df
 
 
-def given_cameras_get_stars_on_silicon(coords, cam_directions, verbose=True):
+def given_cameras_get_stars_on_silicon(coords, cam_directions, verbose=True,
+                                       withgaps=True):
     '''
     If the TESS spacecraft points in a particular direction, which stars fall on
     silicon?
@@ -249,27 +250,37 @@ def given_cameras_get_stars_on_silicon(coords, cam_directions, verbose=True):
 
         try:
             # the extra "1" is because of 1-based image count.
-            onchip += (  # lower left CCD
-                         ((x > 0.0) &
-                         (x < (ccd_pix.value-gap_pix.value)/2.-1.) &
-                         (y > 0.0) &
-                         (y < (ccd_pix.value-gap_pix.value)/2.-1.))
-                     |   # lower right CCD
-                         ((x > (ccd_pix.value+gap_pix.value)/2.-1.) &
-                         (x < (ccd_pix.value+gap_pix.value)-1.) &
-                         (y > 0.0) &
-                         (y < (ccd_pix.value-gap_pix.value)/2.-1.))
-                     |   # upper right CCD
-                         ((x > (ccd_pix.value+gap_pix.value)/2.-1.) &
-                         (x < (ccd_pix.value+gap_pix.value)-1.) &
-                         (y > (ccd_pix.value+gap_pix.value)/2.-1.) &
-                         (y < (ccd_pix.value+gap_pix.value)-1.))
-                     |   # upper left CCD 
-                         ((x > 0.0) &
-                         (x < (ccd_pix.value-gap_pix.value)/2.-1.) &
-                         (y > (ccd_pix.value+gap_pix.value)/2.-1.) &
-                         (y < (ccd_pix.value+gap_pix.value)-1.))
-                     )
+            if withgaps:
+                onchip += (  # lower left CCD
+                             ((x > 0.0) &
+                             (x < (ccd_pix.value-gap_pix.value)/2.-1.) &
+                             (y > 0.0) &
+                             (y < (ccd_pix.value-gap_pix.value)/2.-1.))
+                         |   # lower right CCD
+                             ((x > (ccd_pix.value+gap_pix.value)/2.-1.) &
+                             (x < (ccd_pix.value+gap_pix.value)-1.) &
+                             (y > 0.0) &
+                             (y < (ccd_pix.value-gap_pix.value)/2.-1.))
+                         |   # upper right CCD
+                             ((x > (ccd_pix.value+gap_pix.value)/2.-1.) &
+                             (x < (ccd_pix.value+gap_pix.value)-1.) &
+                             (y > (ccd_pix.value+gap_pix.value)/2.-1.) &
+                             (y < (ccd_pix.value+gap_pix.value)-1.))
+                         |   # upper left CCD 
+                             ((x > 0.0) &
+                             (x < (ccd_pix.value-gap_pix.value)/2.-1.) &
+                             (y > (ccd_pix.value+gap_pix.value)/2.-1.) &
+                             (y < (ccd_pix.value+gap_pix.value)-1.))
+                         )
+
+            elif not withgaps:
+
+                onchip += (
+                    (x > 0. ) &
+                    (x < ccd_pix.value+gap_pix.value - 1.) &
+                    (y > 0. ) &
+                    (y < ccd_pix.value+gap_pix.value - 1.)
+                )
 
         except Exception as e:
 
