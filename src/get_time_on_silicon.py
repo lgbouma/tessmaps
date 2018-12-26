@@ -294,6 +294,130 @@ def given_cameras_get_stars_on_silicon(coords, cam_directions, verbose=True,
     return onchip.astype(np.int)
 
 
+def given_one_camera_get_stars_on_silicon(coords, cam_direction, verbose=True,
+                                          withgaps=True):
+    '''
+    If you have a single TESS camera, and it points in a particular direction,
+    which sources fall on silicon?  (This is relevant in a niche case: you have
+    made an incomplete set of lightcurves for some field, and a you have a list
+    of coordinates, and you want to know which coordinates you would _expect_
+    to have a lightcurve).
+
+    Args:
+
+        coords (np.ndarray of astropy.coordinate.SkyCoords): array of astropy
+        coordinates for the stars that will be either on, or not on silicon.
+
+        cam_direction (float tuple): tuple with format: (cam_elat, cam_elon)
+
+        where "cam_elat" means ecliptic latitude of the camera's center.
+
+    Returns:
+
+        on_chip (np.ndarray): array of 1's and 0's for what falls on
+        silicon, and what does not. Same length as coords.
+    '''
+
+    n_coords = len(coords)
+    if verbose:
+        print('computing whether on silicon for {:d} objects'.
+              format(n_coords))
+
+    n_cameras = 1 # this function is for a single camera's "view"
+    n_sectors = 1 # this function is for a single sector
+    n_views = n_sectors*n_cameras
+
+    # compute camera central coordinates for the first year, given the initial
+    # longitude.
+    views, cam_coords = [], []
+
+    this_elat = cam_direction[0]*u.deg
+    this_elon = cam_direction[1]*u.deg
+    this_coord = SkyCoord(lon=this_elon,lat=this_elat,
+                          frame='barycentrictrueecliptic')
+
+    views = pd.DataFrame({'n_camera':n_cameras, 'elon':this_elon,
+                          'elat':this_elat, 'ra':this_coord.icrs.ra,
+                          'dec':this_coord.icrs.dec}, index=[0])
+
+    # ccd info. see e.g., Huang et al, 2018. The gap size is a number inherited
+    # from Josh Winn's code.
+    fov=24.*u.degree
+    ccd_pix = 4096*u.pix
+    gap_pix = (2./0.015)*u.pix # about 133 pixels per gap
+    pixel_scale = u.pixel_scale(fov/(ccd_pix + gap_pix))
+    ccd_center = np.ones(2)*(ccd_pix + gap_pix) / 2
+    delt = (np.ones(2)*u.pix).to(u.degree, pixel_scale)
+
+    elon = coords.barycentrictrueecliptic.lon.value
+    elat = coords.barycentrictrueecliptic.lat.value
+    ra = coords.ra.value
+    dec = coords.dec.value
+
+    onchip = np.zeros_like(ra)
+    for ix, view in views.iterrows():
+
+        # create new WCS object. See. e.g., Calabretta & Greisen 2002, paper
+        # II, table 1. CRPIX: pixel-coordinates of reference pixel (center of
+        # image). CRVAL: celestial long (RA) and lat (dec) of reference pixel.
+        # CDELT: degrees per pixel at reference pixel location, i.e. the
+        # coordinate scale. CTYPE: gnomic projection.
+        w = wcs.WCS(naxis=2)
+        w.wcs.crpix = ccd_center.value
+        w.wcs.crval = [view['elon'], view['elat']]
+        w.wcs.cdelt = delt.value
+        w.wcs.ctype = ['RA---TAN', 'DEC--TAN']
+
+        # follow fits standards: The image pixel count starts with 1.
+        x, y = w.wcs_world2pix(elon, elat, 1)
+
+        try:
+            # the extra "1" is because of 1-based image count.
+            if withgaps:
+                onchip += (  # lower left CCD
+                             ((x > 0.0) &
+                             (x < (ccd_pix.value-gap_pix.value)/2.-1.) &
+                             (y > 0.0) &
+                             (y < (ccd_pix.value-gap_pix.value)/2.-1.))
+                         |   # lower right CCD
+                             ((x > (ccd_pix.value+gap_pix.value)/2.-1.) &
+                             (x < (ccd_pix.value+gap_pix.value)-1.) &
+                             (y > 0.0) &
+                             (y < (ccd_pix.value-gap_pix.value)/2.-1.))
+                         |   # upper right CCD
+                             ((x > (ccd_pix.value+gap_pix.value)/2.-1.) &
+                             (x < (ccd_pix.value+gap_pix.value)-1.) &
+                             (y > (ccd_pix.value+gap_pix.value)/2.-1.) &
+                             (y < (ccd_pix.value+gap_pix.value)-1.))
+                         |   # upper left CCD 
+                             ((x > 0.0) &
+                             (x < (ccd_pix.value-gap_pix.value)/2.-1.) &
+                             (y > (ccd_pix.value+gap_pix.value)/2.-1.) &
+                             (y < (ccd_pix.value+gap_pix.value)-1.))
+                         )
+
+            elif not withgaps:
+
+                onchip += (
+                    (x > 0. ) &
+                    (x < ccd_pix.value+gap_pix.value - 1.) &
+                    (y > 0. ) &
+                    (y < ccd_pix.value+gap_pix.value - 1.)
+                )
+
+        except Exception as e:
+
+            print('failed computing onchip. error msg: {:s}'.format(e))
+            return 0
+
+    if verbose:
+        print('computed sector numbers for {:d} stars/objects'.
+              format(n_coords))
+
+    return onchip.astype(np.int)
+
+
+
 
 if __name__ == '__main__':
 
@@ -313,3 +437,5 @@ if __name__ == '__main__':
     onchip = given_cameras_get_stars_on_silicon(coords, cam_directions)
 
     df = get_time_on_silicon(coords)
+
+    onchip = given_one_camera_get_stars_on_silicon(coords, cam_directions[0])
