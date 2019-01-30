@@ -43,8 +43,8 @@ def get_time_on_silicon(coords, lambda_init=315.8*u.degree, fov=24.*u.degree,
     n_views = n_sectors*n_cameras
 
     # create dataframe that we will save boolean sector observations in.
-    d = {'ra':coords.ra.value,
-         'dec':coords.dec.value,
+    d = {'ra':coords.icrs.ra.value,
+         'dec':coords.icrs.dec.value,
          'elon':coords.barycentrictrueecliptic.lon.value,
          'elat':coords.barycentrictrueecliptic.lat.value
         }
@@ -81,8 +81,8 @@ def get_time_on_silicon(coords, lambda_init=315.8*u.degree, fov=24.*u.degree,
 
     elon = coords.barycentrictrueecliptic.lon.value
     elat = coords.barycentrictrueecliptic.lat.value
-    ra = coords.ra.value
-    dec = coords.dec.value
+    ra = coords.icrs.ra.value
+    dec = coords.icrs.dec.value
 
     for ix, view in views.iterrows():
 
@@ -99,6 +99,8 @@ def get_time_on_silicon(coords, lambda_init=315.8*u.degree, fov=24.*u.degree,
         w.wcs.ctype = ['RA---TAN', 'DEC--TAN']
 
         # follow fits standards: The image pixel count starts with 1.
+        # NOTE: this is the basic "wcslib" WCS transformation. no SIP lookup
+        # transformation is applied (as in all_world2pix).
         x, y = w.wcs_world2pix(elon, elat, 1)
         ###x, y = w.wcs_world2pix(ra, dec, 1) # either works
 
@@ -226,8 +228,8 @@ def given_cameras_get_stars_on_silicon(coords, cam_directions, verbose=True,
 
     elon = coords.barycentrictrueecliptic.lon.value
     elat = coords.barycentrictrueecliptic.lat.value
-    ra = coords.ra.value
-    dec = coords.dec.value
+    ra = coords.icrs.ra.value
+    dec = coords.icrs.dec.value
 
     onchip = np.zeros_like(ra)
     for ix, view in views.iterrows():
@@ -351,8 +353,8 @@ def given_one_camera_get_stars_on_silicon(coords, cam_direction, verbose=True,
 
     elon = coords.barycentrictrueecliptic.lon.value
     elat = coords.barycentrictrueecliptic.lat.value
-    ra = coords.ra.value
-    dec = coords.dec.value
+    ra = coords.icrs.ra.value
+    dec = coords.icrs.dec.value
 
     onchip = np.zeros_like(ra)
     for ix, view in views.iterrows():
